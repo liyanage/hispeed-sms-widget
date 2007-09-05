@@ -1,0 +1,107 @@
+/*
+
+
+*/
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a.back {
+	color: #aaf;
+}
+
+input, textarea {
+	font-size: 9px;
+}
+
+
+body, td {
+	font-family: Helvetica, Arial;
+	font-size: 9px;
+}
+
+body {
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+td {
+	padding: 1px 0 1px 0;
+}
+
+table, th, textarea {
+	padding: 0;
+	margin: 0;
+	border: 0;
+	border-collapse: collapse;
+}
+
+p {
+	margin: 1px 0 2px 0;
+}
+
+#front {
+	width: 200px;
+	height: 115px;
+    background: url(file:images/frontside_background.png) no-repeat top left;
+	display: block;
+}
+
+#front, #back {
+	padding: 8px;
+}
+
+
+#back {
+	width: 200px;
+	height: 115px;
+    display: none;
+    background: url(file:images/backside_background.png) no-repeat top left;
+} 
+
+
+.flip {
+    position: absolute;
+    bottom: 17px;
+    right: 18px;
+    width: 13px;
+    height: 13px;
+}
+
+#flip {
+    opacity: 0;
+    background: url(file:///System/Library/WidgetResources/ibutton/white_i.png) no-repeat top left;
+    z-index: 8000;
+}
+
+#fliprollie {
+    display: none;
+    opacity: 0.25;
+    background: url(file:///System/Library/WidgetResources/ibutton/white_rollie.png) no-repeat top left;
+    z-index: 7999;
+}
+
+#done {
+	margin: 4px 0 0 3px;
+}
+
+/*
+#send_sms {
+	float: left;
+}
+*/
+
+
+#abook {
+	width: 110px;
+	font-size: 8px;
+	display: block;
+	margin: 1px 0 1px 0;
+}
+

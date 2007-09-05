@@ -1,0 +1,79 @@
+<!--
+
+
+-->
+
+<html>
+
+<head>
+
+	<!-- The style sheet should be kept in a separate file; it contains the design for the widget -->
+	<style type="text/css">
+		@import "main.css";
+		@import "localizedStyle.css";
+	</style>
+
+	<!-- The JavaScript file contains the logic needed for this widget -->
+	<script type='text/javascript' src='LocalizedStrings.js' charset='utf-8'/>
+	<script type='text/javascript' src='sarissa/sarissa.js' charset='utf-8'/>
+	<script type='text/javascript' src='main.js' charset='utf-8'/>
+	<script type='text/javascript' src='file:///System/Library/WidgetResources/button/genericButton.js' charset='utf-8'/>
+</head>
+
+
+<body onload="setup();">
+
+	<div id="front" onmousemove='mousemove(event);' onmouseout='mouseexit(event);'>
+
+		<table>
+			<tr><td><span id="label_points" /></td><td><a href="javascript:update_servicepoints_status();" title="title_clicktoupdate"><span id="label_servicepoints" /></a> | <a href="javascript:widget.openURL('https://your.hispeed.ch/de/apps/wallet/')" title="title_clicktobuy"><span id="label_buy" /></a></td></tr>
+			<tr><td><a href="javascript:showAddressBook();" accesskey="p" title="title_clickaddressbook"><span id='label_phone' /></a></td><td><div id="abook_div"></div><input type="text" id="input_number" onkeyup="inputNumberChanged();" onmouseover="inputNumberOver()" onmouseout="inputNumberOut()" name="number" style="width: 110px;"></td></tr>
+			<tr><td colspan="2"><textarea id="input_message" name="message" rows="3" style="width: 172px;" onkeyup="update_msg_charcount();"></textarea></td></tr>
+			<tr><td><div id="send_sms" onclick="send_sms();"></div></td><td><div style="padding-left: 5px; width: 110px;" id="statusmessage"></div></td></tr>
+		</table>
+
+	
+		<div class='flip' id='flip' onclick='showBack(event);' onmouseover='enterflip(event);' onmouseout='exitflip(event);'></div>
+		<div class='flip' id='fliprollie'></div>
+
+	</div>
+
+
+
+
+
+    <div id="back">
+
+		<table>
+			<tr>
+				<td id='label_username' style="color: white;"></td>
+				<td>&nbsp;<input type="text" id="input_username" name="username"></td>
+			</tr>
+			<tr>
+				<td id='label_password' style="color: white;"></td>
+				<td>&nbsp;<input type="password" id="input_password" name="password"></td>
+			</tr>
+			<tr>
+				<td></td>
+				<td style="color: white;">&nbsp;<a class="back" href="javascript:widget.openURL('http://www.entropy.ch/software/macosx/#hispeedsms-widget')"><span id='label_moreinfo' /></a></td>
+			</tr>
+			<tr>
+				<td>&nbsp;</td>
+				<td style="color: white;">&nbsp;<a class="back" href="javascript:widget.openURL('mailto:web@entropy.ch?subject=hispeed-widget')"><span id='label_emailme' /></a></td>
+			</tr>
+			<tr>
+				<td></td>
+				<td><div style="padding-top: 15px; color: #aaa; float: right">v<span id='version' /></div><div id="done"></div></td>
+			</tr>
+		</table>
+
+		
+
+    </div>
+
+
+</body>
+</html>
+
+
+
