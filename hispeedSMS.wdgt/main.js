@@ -305,18 +305,41 @@ function systemHandlerVersion() {
 
 
 
+// function showAddressBook() {
+// 
+// 	var result = widget.system("/bin/pwd", null);
+// 	var pwd = result.outputString.match(/^(.+)$/)[1];
+// 
+// 	// I use the niutil read instead of ~ or $HOME because those seem
+// 	// to be broken if a user's home directory is not "/Users/<username>".
+// 	var command_line = "(echo '<root>'; cat `niutil -readprop . /users/$USER home`/Library/Caches/com.apple.AddressBook/MetaData/*.abcdp | grep -v '<?xml' | grep -v '<!DOCTYPE'; echo '</root>' ) | xsltproc '" + pwd + "/addressbook2html.xslt' -";
+// 	globalSystemCall = widget.system(command_line, systemHandlerAddressBook);
+// 
+// }
+
+
+// updated version for Leopard provided by William Harris
 function showAddressBook() {
 
 	var result = widget.system("/bin/pwd", null);
 	var pwd = result.outputString.match(/^(.+)$/)[1];
+	
+	result = widget.system("/usr/bin/uname -r | /usr/bin/cut -f1 -d'.'", null);
+	var osVer = result.outputString.match(/^(.+)$/)[1];
 
 	// I use the niutil read instead of ~ or $HOME because those seem
 	// to be broken if a user's home directory is not "/Users/<username>".
-	var command_line = "(echo '<root>'; cat `niutil -readprop . /users/$USER home`/Library/Caches/com.apple.AddressBook/MetaData/*.abcdp | grep -v '<?xml' | grep -v '<!DOCTYPE'; echo '</root>' ) | xsltproc '" + pwd + "/addressbook2html.xslt' -";
+	
+	// Updated for Leopard - use dscl, since niutil no longer exists
+
+	if (osVer < 9) {
+		var command_line = "(echo '<root>'; cat `niutil -readprop . /users/$USER home`/Library/Caches/com.apple.AddressBook/MetaData/*.abcdp | grep -v '<?xml' | grep -v '<!DOCTYPE'; echo '</root>' ) | xsltproc '" + pwd + "/addressbook2html.xslt' -";
+	} else {
+		var command_line = "(echo '<root>'; for f in `/usr/bin/dscl . -read /users/$USER NFSHomeDirectory | cut -f2 -d' '`/Library/Caches/com.apple.AddressBook/MetaData/*.abcdp; do plutil -convert xml1 -o - $f | grep -v '<?xml' | grep -v '<!DOCTYPE'; done; echo '</root>' ) | xsltproc '" + pwd + "/addressbook2html.xslt' -";
+	}
 	globalSystemCall = widget.system(command_line, systemHandlerAddressBook);
 
 }
-
 
 
 
