@@ -91,11 +91,9 @@ p {
 	margin: 4px 0 0 3px;
 }
 
-/*
 #send_sms {
-	float: left;
+	white-space: nowrap;
 }
-*/
 
 
 #abook {
