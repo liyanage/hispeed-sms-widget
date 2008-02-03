@@ -115,22 +115,73 @@ function do_send_sms() {
 	}
 
 	/* Try to send the message */
-	var request = new XMLHttpRequest();
-	request.open("POST", "http://messenger.hispeed.ch/walrus/app/sms_send.do", false);
-	request.setRequestHeader("Cookie", globalGlueCookie);
-	var body = "hostname=your.hispeed.ch&action=send&groupName=%3A%3A__DEFAULTGROUP__%3A%3A&message=" + last.message + "&numCount=&sendDate=&sendTime=&notifAddress=notifNone&originator=originatorUser&recipientChecked=yes&recipient=" + last.number;
-	request.send(body);
+	
+	var match = globalGlueCookie.match(/JSESSIONID=(\w+)/);
+	if (!match) {
+	    localizedString('errorsending');
+		alert('Unable to find JSESSIONID in cookie value: ' + globalGlueCookie);
+		return;
+	}
+	var sessionId = match[1];
 
-	if (request.responseText.match(/Sendeauftrag erfolgreich/)) {
-		get_servicepoints(request.responseText);
-		set_statusmessage(localizedString('smssent'));
-	} else {
-		set_statusmessage_error(localizedString('errorsending'));
-	}	
+//	alert("*** debug 1: " + sessionId);
+//	alert("*** debug 2: " + globalGlueCookie);
+
+	var url = "http://messenger.hispeed.ch/walrus/app/sms_send.do;jsessionid=" + sessionId;
+//	alert("*** url: " + url);
+
+	var escapedMessage = encodeURIComponent(last.message).replace(/'/, '%27');
+
+	var body = "hostname=your.hispeed.ch&action=send&groupName=%3A%3A__DEFAULTGROUP__%3A%3A&message=" + escapedMessage + "&numCount=&sendDate=&sendTime=&notifAddress=notifNone&originator=originatorUser&recipientChecked=yes&recipient=" + last.number;
+//	alert("*** body: " + body);
+	var cmd = "/usr/bin/curl -q -s -i --cookie '" + globalGlueCookie + "' --header 'X-Widget-Request: true' --data-binary '" + body + "' '" + url + "'";
+//	alert("*** cmd: " + cmd);
+
+	widget.system(cmd, do_send_sms_system_handler);
+	
+	return;
+	
+	// XHR is broken on Leopard 10.5.1/2, cannot set Cookie header, uses Safari's values instead.
+// 	var request = new XMLHttpRequest();
+// 	request.setRequestHeader("Cookie", globalGlueCookie);
+// 	request.open("POST", url, false);
+// //	var body = "hostname=your.hispeed.ch&action=send&groupName=%3A%3A__DEFAULTGROUP__%3A%3A&message=" + last.message + "&numCount=&sendDate=&sendTime=&notifAddress=notifNone&originator=originatorUser&recipientChecked=yes&recipient=" + last.number;
+// 	var body = "hostname=your.hispeed.ch&action=send&groupName=%3A%3A__DEFAULTGROUP__%3A%3A&message=" + escape(last.message) + "&numCount=&sendDate=&sendTime=&notifAddress=notifNone&originator=originatorUser&recipientChecked=yes&recipient=" + last.number;
+// 	request.send(body);
+// 
+// 	if (request.responseText.match(/Sendeauftrag erfolgreich/)) {
+// 		get_servicepoints(request.responseText);
+// 		set_statusmessage(localizedString('smssent'));
+// 	} else {
+// 		set_statusmessage_error(localizedString('errorsending'));
+// 		alert('error sending sms. response status/body: ' + request.status + '/' + request.responseText)
+// 	}	
 
 }
 
 
+
+function do_send_sms_system_handler(systemCommand) {
+
+	var stdout = systemCommand.outputString;
+	var stderr = systemCommand.errorString;
+
+	if (systemCommand.status != 0) {
+		set_statusmessage_error(localizedString('errorsending'));
+		alert('error sending sms. non-zero curl exit status ' + systemCommand.status + ', stdout: ' + stdout + ', stderr: ' + stderr);
+		return;	    
+	}
+
+	if (!(stdout && stdout.match(/Sendeauftrag erfolgreich/))) {
+		set_statusmessage_error(localizedString('errorsending'));
+		alert("error sending sms. Server response doesn't contain confirmation string, stdout: " + stdout + ', stderr: ' + stderr);
+		return;
+	}
+
+	get_servicepoints(stdout);
+	set_statusmessage(localizedString('smssent'));
+
+}
 
 
 
