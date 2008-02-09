@@ -14,10 +14,12 @@
 	</select>
 </xsl:template>
 
+
 <!-- per-person template -->
 <xsl:template match="plist[dict/dict/array/string[. = '_$!&lt;Mobile&gt;!$_']]">
 	<xsl:apply-templates select="dict/dict/array/string[. = '_$!&lt;Mobile&gt;!$_']"/>
 </xsl:template>
+
 
 <!-- per-mobile-number template -->
 <xsl:template match="string">

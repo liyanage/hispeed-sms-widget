@@ -354,21 +354,6 @@ function systemHandlerVersion() {
 
 
 
-
-
-// function showAddressBook() {
-// 
-// 	var result = widget.system("/bin/pwd", null);
-// 	var pwd = result.outputString.match(/^(.+)$/)[1];
-// 
-// 	// I use the niutil read instead of ~ or $HOME because those seem
-// 	// to be broken if a user's home directory is not "/Users/<username>".
-// 	var command_line = "(echo '<root>'; cat `niutil -readprop . /users/$USER home`/Library/Caches/com.apple.AddressBook/MetaData/*.abcdp | grep -v '<?xml' | grep -v '<!DOCTYPE'; echo '</root>' ) | xsltproc '" + pwd + "/addressbook2html.xslt' -";
-// 	globalSystemCall = widget.system(command_line, systemHandlerAddressBook);
-// 
-// }
-
-
 // updated version for Leopard provided by William Harris
 function showAddressBook() {
 
@@ -382,12 +367,15 @@ function showAddressBook() {
 	// to be broken if a user's home directory is not "/Users/<username>".
 	
 	// Updated for Leopard - use dscl, since niutil no longer exists
-
+//	set_statusmessage(localizedString('reading_abook'));
 	if (osVer < 9) {
-		var command_line = "(echo '<root>'; cat `niutil -readprop . /users/$USER home`/Library/Caches/com.apple.AddressBook/MetaData/*.abcdp | grep -v '<?xml' | grep -v '<!DOCTYPE'; echo '</root>' ) | xsltproc '" + pwd + "/addressbook2html.xslt' -";
+		var command_line = "(echo '<root>'; cat $(niutil -readprop . /users/$USER home)/Library/Caches/com.apple.AddressBook/MetaData/*.abcdp | grep -v '<?xml' | grep -v '<!DOCTYPE'; echo '</root>' ) | xsltproc '" + pwd + "/addressbook2html.xslt' -";
 	} else {
-		var command_line = "(echo '<root>'; for f in `/usr/bin/dscl . -read /users/$USER NFSHomeDirectory | cut -f2 -d' '`/Library/Caches/com.apple.AddressBook/MetaData/*.abcdp; do plutil -convert xml1 -o - $f | grep -v '<?xml' | grep -v '<!DOCTYPE'; done; echo '</root>' ) | xsltproc '" + pwd + "/addressbook2html.xslt' -";
+//		var command_line = "(echo '<root>'; for f in $(/usr/bin/dscl . -read /users/$USER NFSHomeDirectory | cut -f2 -d' ')/Library/Caches/com.apple.AddressBook/MetaData/*.abcdp; do plutil -convert xml1 -o - $f | grep -v '<?xml' | grep -v '<!DOCTYPE'; done; echo '</root>' ) | xsltproc '" + pwd + "/addressbook2html.xslt' -";
+//		var command_line = "(echo '<root>'; for f in $(/usr/bin/dscl . -read /users/$USER NFSHomeDirectory | cut -f2 -d' ')/'Library/Application Support/AddressBook/Metadata'/*.abcdp; do plutil -convert xml1 -o - $f | grep -v '<?xml' | grep -v '<!DOCTYPE'; done; echo '</root>' ) | xsltproc '" + pwd + "/addressbook2html.xslt' -";
+		var command_line = "/bin/sh " + pwd + "/addressbook2html.sh";
 	}
+//	alert(command_line);
 	globalSystemCall = widget.system(command_line, systemHandlerAddressBook);
 
 }
@@ -412,6 +400,8 @@ function systemHandlerAddressBook() {
 
 	document.getElementById('abook').focus();
 	document.getElementById('label_abook').appendChild(document.createTextNode(localizedString('abook')));
+
+	set_statusmessage('');
 
 }
 

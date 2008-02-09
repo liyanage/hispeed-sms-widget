@@ -31,7 +31,8 @@ var localizedStrings = {
 	nopassword:        "Kein Passwort konfiguriert...",
 	toolong:           "Meldung zu lang!",
 	abook:             'Adressbuch...',
-	charsleft:         'Zeichen übrig'
+	charsleft:         'Zeichen übrig',
+	reading_abook:     'Lese Adressbuch...'
 };
 
 // Local Variables:
