@@ -20,6 +20,66 @@ var globalSystemCall;
 var globalOsVersion;
 
 
+
+Autocompleter.AddressBook = Class.create(Autocompleter.Local, {
+
+	addressBookDataMaxAgeSeconds: 10,
+
+  initialize: function(element, update, options) {
+    this.baseInitialize(element, update, options);
+//  	this.updateAddressBookArray();
+  },
+
+  getUpdatedChoices: function() {
+  	this.updateAddressBookData();
+  },
+
+  updateAddressBookData: function() {
+	if (this.addressBookDataIsUpToDate()) {
+		this.updateChoices(this.options.selector(this));
+		return;
+	}
+	
+	alert('reading address book data');
+	var result = widget.system("/bin/pwd", null);
+	var match = result.outputString.match(/^(.+)/);
+	var pwd = match[1];
+	var cmd = "/usr/bin/perl " + pwd + "/addressbook2json.pl > /tmp/abook.js";
+	widget.system(cmd, this.updateAddressBookDataSystemCallback.bind(this));
+
+  },
+
+  updateAddressBookDataSystemCallback: function (systemCall) {
+	new Ajax.Request('file:///tmp/abook.js', {
+		onComplete: this.updateAddressBookDataXhrCallback.bind(this)
+	});
+  },
+
+
+  updateAddressBookDataXhrCallback: function (xhr) {
+	try {
+		var addressBookData = eval('(' + xhr.responseText + ')');
+	} catch (e) {
+		alert('Exception: ' + e);
+		return;
+	}
+	
+	this.addressBookDataUpdateTime = new Date().getTime();
+	this.options.array = addressBookData;
+	this.updateChoices(this.options.selector(this));
+  },
+
+
+  addressBookDataIsUpToDate: function() {
+  	if (!this.addressBookDataUpdateTime) return false;
+  	var addressBookDataAgeSeconds = (new Date().getTime() - this.addressBookDataUpdateTime) / 1000;
+  	return addressBookDataAgeSeconds < this.addressBookDataMaxAgeSeconds;
+  }
+
+
+});
+
+
 function setup() {
 	$("input_username").value = widget.preferenceForKey("username");
 	var recentNumber = widget.preferenceForKey("number");
@@ -43,34 +103,7 @@ function setupOsVersion() {
 
 function setupAutoCompletion() {
 	if (globalOsVersion < 9) return;
-	var result = widget.system("/bin/pwd", null);
-	var match = result.outputString.match(/^(.+)/);
-	var pwd = match[1];
-	var cmd = "/usr/bin/perl " + pwd + "/addressbook2json.pl > /tmp/abook.js";
-	widget.system(cmd, addressbook2jsonCallback).close();
-}
-
-
-
-function addressbook2jsonCallback(systemCall) {
-	new Ajax.Request('file:///tmp/abook.js', {
-		onComplete: addressbook2jsonFileReadCallback,
-		evalJSON: false,
-		evalJS: false,
-		method: 'get'
-	});
-}
-
-
-
-function addressbook2jsonFileReadCallback(xhr) {
-	try {
-		var addressBookData = eval('(' + xhr.responseText + ')');
-	} catch (e) {
-		alert('Exception: ' + e);
-		return;
-	}
-	new Autocompleter.Local('input_number', 'input_number_list', addressBookData, {choices: 6, fullSearch: true, afterUpdateElement: autocompleterUpdate});
+	new Autocompleter.AddressBook('input_number', 'input_number_list', {choices: 6, fullSearch: true, afterUpdateElement: autocompleterUpdate});
 }
 
 
