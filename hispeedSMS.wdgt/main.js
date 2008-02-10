@@ -4,7 +4,6 @@
 	
 	Written by Marc Liyanage <http://www.entropy.ch>
 	Multiple send bug and Keychain fixes and lots of testing and debugging by Joe Scherler
-
  */
 
 
@@ -18,17 +17,69 @@ var last = {message:null, number:null};
 var globalGlueCookie;
 var globalServicePoints;
 var globalSystemCall;
+var globalOsVersion;
 
 
 function setup() {
-	document.getElementById("input_username").value = widget.preferenceForKey("username");
-	document.getElementById("input_number").value = widget.preferenceForKey("number");
-	createGenericButton(document.getElementById('done'), localizedString('done'), hideBack);
-	createGenericButton(document.getElementById('send_sms'), localizedString('send'), send_sms);
+	$("input_username").value = widget.preferenceForKey("username");
+	var recentNumber = widget.preferenceForKey("number");
+	$("input_number").value = recentNumber || '';
+	createGenericButton($('done'), localizedString('done'), hideBack);
+	createGenericButton($('send_sms'), localizedString('send'), send_sms);
 	update_msg_charcount();
 	
 	localizeStrings();
 	findWidgetVersion();
+	setupOsVersion();
+	setupAutoCompletion();
+
+}
+
+function setupOsVersion() {
+	var result = widget.system("/usr/bin/uname -r | /usr/bin/cut -f1 -d'.'", null);
+	globalOsVersion = result.outputString.match(/^(.+)/)[1];
+}
+
+
+function setupAutoCompletion() {
+	if (globalOsVersion < 9) return;
+	var result = widget.system("/bin/pwd", null);
+	var match = result.outputString.match(/^(.+)/);
+	var pwd = match[1];
+	var cmd = "/usr/bin/perl " + pwd + "/addressbook2json.pl > /tmp/abook.js";
+	widget.system(cmd, addressbook2jsonCallback).close();
+}
+
+
+
+function addressbook2jsonCallback(systemCall) {
+	new Ajax.Request('file:///tmp/abook.js', {
+		onComplete: addressbook2jsonFileReadCallback,
+		evalJSON: false,
+		evalJS: false,
+		method: 'get'
+	});
+}
+
+
+
+function addressbook2jsonFileReadCallback(xhr) {
+	try {
+		var addressBookData = eval('(' + xhr.responseText + ')');
+	} catch (e) {
+		alert('Exception: ' + e);
+		return;
+	}
+	new Autocompleter.Local('input_number', 'input_number_list', addressBookData, {choices: 6, fullSearch: true, afterUpdateElement: autocompleterUpdate});
+}
+
+
+function autocompleterUpdate() {
+	var value = $('input_number').value;
+	var match = value.match(/^(.+?) - (.+)/);
+	var name = match[1];
+	var number = match[2];
+	nameAndNumberPick(name, number);
 }
 
 
@@ -69,8 +120,8 @@ function updater_text_content(element, attribute, value) {
 
 function send_sms() {
 	
-	var message = document.getElementById("input_message").value;
-	var number = document.getElementById("input_number").value;
+	var message = $("input_message").value;
+	var number = $("input_number").value;
 
 	if (!message) {
 		set_statusmessage_error(localizedString('nomessage'));
@@ -223,14 +274,14 @@ function systemHandlerStage1() {
 
 	/* step 2, authenticate session */
 
-	var username = document.getElementById("input_username").value;
+	var username = $("input_username").value;
 	if (!username) {
 		set_statusmessage_error(localizedString('nousername'));
 		return null;
 	}
 
 	widget.setPreferenceForKey(username, "username");
-	var password = document.getElementById("input_password").value;
+	var password = $("input_password").value;
 
 	if (!password) {
 		var command_line = "/usr/bin/security -q find-internet-password -g -s your.hispeed.ch -a '" + username + "'";
@@ -248,7 +299,7 @@ function systemHandlerStage1() {
 		var matches = result.errorString.match(/^password: "(.+)"/);
 		if (matches) {
 			password = matches[1];
-			document.getElementById("input_password").value = password;
+			$("input_password").value = password;
 		}
 	}	
 
@@ -319,22 +370,15 @@ function systemHandlerStage3() {
 
 
 
-
-
-
-
-
-
-
 function findWidgetVersion() {
-
 	var result = widget.system("/bin/pwd", null);
-	var pwd = result.outputString.match(/^(.+)$/)[1];
+	var match = result.outputString.match(/^(.+)/);
+	var pwd = match[1];
 
 	var command_line = "xsltproc '" + pwd + "/infoplist2version.xslt' '" + pwd + "/Info.plist'";
 	globalSystemCall = widget.system(command_line, systemHandlerVersion);
-
 }
+
 
 
 function systemHandlerVersion() {
@@ -349,7 +393,7 @@ function systemHandlerVersion() {
 
 	var version = globalSystemCall.outputString;
 
-	document.getElementById('version').appendChild(document.createTextNode(version));
+	$('version').appendChild(document.createTextNode(version));
 }
 
 
@@ -358,22 +402,19 @@ function systemHandlerVersion() {
 function showAddressBook() {
 
 	var result = widget.system("/bin/pwd", null);
-	var pwd = result.outputString.match(/^(.+)$/)[1];
+	var pwd = result.outputString.match(/^(.+)/)[1];
 	
-	result = widget.system("/usr/bin/uname -r | /usr/bin/cut -f1 -d'.'", null);
-	var osVer = result.outputString.match(/^(.+)$/)[1];
-
 	// I use the niutil read instead of ~ or $HOME because those seem
 	// to be broken if a user's home directory is not "/Users/<username>".
 	
 	// Updated for Leopard - use dscl, since niutil no longer exists
 //	set_statusmessage(localizedString('reading_abook'));
-	if (osVer < 9) {
-		var command_line = "(echo '<root>'; cat $(niutil -readprop . /users/$USER home)/Library/Caches/com.apple.AddressBook/MetaData/*.abcdp | grep -v '<?xml' | grep -v '<!DOCTYPE'; echo '</root>' ) | xsltproc '" + pwd + "/addressbook2html.xslt' -";
+	if (globalOsVersion < 9) {
+		var command_line = "(echo '<root>'; cat $(niutil -readprop . /users/$USER home)/Library/Caches/com.apple.AddressBook/MetaData/*.abcdp | grep -v '<?xml' | grep -v '<!DOCTYPE'; echo '</root>' ) | xsltproc '" + pwd + "/addressbook2html.xslt' - > /tmp/abook.html";
 	} else {
 //		var command_line = "(echo '<root>'; for f in $(/usr/bin/dscl . -read /users/$USER NFSHomeDirectory | cut -f2 -d' ')/Library/Caches/com.apple.AddressBook/MetaData/*.abcdp; do plutil -convert xml1 -o - $f | grep -v '<?xml' | grep -v '<!DOCTYPE'; done; echo '</root>' ) | xsltproc '" + pwd + "/addressbook2html.xslt' -";
 //		var command_line = "(echo '<root>'; for f in $(/usr/bin/dscl . -read /users/$USER NFSHomeDirectory | cut -f2 -d' ')/'Library/Application Support/AddressBook/Metadata'/*.abcdp; do plutil -convert xml1 -o - $f | grep -v '<?xml' | grep -v '<!DOCTYPE'; done; echo '</root>' ) | xsltproc '" + pwd + "/addressbook2html.xslt' -";
-		var command_line = "/bin/sh " + pwd + "/addressbook2html.sh";
+		var command_line = "/bin/sh " + pwd + "/addressbook2html.sh > /tmp/abook.html";
 	}
 //	alert(command_line);
 	globalSystemCall = widget.system(command_line, systemHandlerAddressBook);
@@ -393,24 +434,34 @@ function systemHandlerAddressBook() {
 		return;
 	}
 
-	var html = globalSystemCall.outputString;
-
-	document.getElementById('input_number').style.display = 'none';
-	document.getElementById('abook_div').innerHTML = html;
-
-	document.getElementById('abook').focus();
-	document.getElementById('label_abook').appendChild(document.createTextNode(localizedString('abook')));
-
-	set_statusmessage('');
-
+	new Ajax.Request('file:///tmp/abook.html', {
+		onComplete: addressbook2HtmlFileReadCallback
+	});
 }
 
 
+
+function addressbook2HtmlFileReadCallback(xhr) {
+	var html = xhr.responseText;
+	$('input_number').style.display = 'none';
+	$('abook_div').update(html);
+	$('abook').focus();
+	$('label_abook').appendChild(document.createTextNode(localizedString('abook')));
+	set_statusmessage('');
+}
+
+
+
 function AddressBookPick() {
-	var abook = document.getElementById('abook');
+	var abook = $('abook');
 	var number = abook.value;
 	var name = abook.options.item(abook.selectedIndex).innerHTML;
+	nameAndNumberPick(name, number);
+}
 
+
+
+function nameAndNumberPick(name, number) {
 	number = number.replace(/[^0-9+]/g, "");
 
 	if (number.match(/^\+41/)) {
@@ -419,24 +470,26 @@ function AddressBookPick() {
 		number = number.replace(/^\+/, "00");
 	}
 
-	document.getElementById('input_number').style.display = 'inline';
-	document.getElementById("input_number").value = number;
-	document.getElementById("input_number").setAttribute("title", name);
-	document.getElementById('abook_div').innerHTML = "";
+	$('input_number').style.display = 'inline';
+	$("input_number").value = number;
+	$("input_number").setAttribute("title", name);
+	$('abook_div').update();
 
-	document.getElementById('input_message').focus();
-	
+	$('input_message').focus();
 }
 
+
+
 function inputNumberChanged() {
-	document.getElementById("input_number").setAttribute("title", "");
+	$("input_number").setAttribute("title", "");
 }
 
 
 function inputNumberOver() {
-	var title = document.getElementById("input_number").getAttribute("title");
+	var title = $("input_number").getAttribute("title");
 	if (title) {
-	    set_statusmessage(title.match(/^(.+) - /)[1]);
+		var match = title.match(/^(.+) - /);
+	    if (match) set_statusmessage(match[1]);
 	}
 }
 
@@ -455,17 +508,17 @@ function update_servicepoints_status() {
 
 function update_msg_charcount() {
 
-	var message = document.getElementById("input_message").value;
+	var message = $("input_message").value;
 	
 	var charsleft = 160 - message.length;
 //	self.setTimeout('set_statusmessage("' + charsleft + ' characters left")', 500);
 
 	if (charsleft > 0) {
 		self.setTimeout('set_statusmessage("' + charsleft + ' ' + localizedString('charsleft') + '")', 0);
-		document.getElementById('send_sms').style.display = 'block';
+		$('send_sms').style.display = 'block';
 	} else {
 		set_statusmessage_error(localizedString('toolong'));
-		document.getElementById('send_sms').style.display = 'none';
+		$('send_sms').style.display = 'none';
 	}
 
 }
@@ -478,8 +531,8 @@ function set_statusmessage_error(message) {
 
 
 function set_statusmessage(message, color) {
-	var span = document.getElementById('statusmessage');
-	span.innerHTML = message;
+	var span = $('statusmessage');
+	span.update(message);
 	
 	if (color) {
 		span.style.color = color;
@@ -494,7 +547,7 @@ function set_statusmessage(message, color) {
 
 
 function set_servicepoints_status(servicepoints) {
-	var span = document.getElementById('label_servicepoints');
+	var span = $('label_servicepoints');
 	var text = servicepoints >= 25 ? servicepoints : servicepoints + ' (' + localizedString('notenoughpoints') + ')';
 	span.replaceChild(document.createTextNode(servicepoints), span.firstChild);
 }
@@ -517,8 +570,8 @@ function get_servicepoints(html) {
 /* Widget visual effects functions */
 
 function showBack() {
-    var front = document.getElementById("front");
-    var back = document.getElementById("back");
+    var front = $("front");
+    var back = $("back");
         
     if (window.widget)
         widget.prepareForTransition("ToBack");
@@ -535,9 +588,9 @@ function hideBack()
 
 {
 
-    var front = document.getElementById("front");
+    var front = $("front");
 
-    var back = document.getElementById("back");
+    var back = $("back");
 
         
 
@@ -574,7 +627,7 @@ function mousemove (event)
                 
         animation.duration = 500;
         animation.starttime = starttime;
-        animation.firstElement = document.getElementById ('flip');
+        animation.firstElement = $ ('flip');
         animation.timer = setInterval ("animate();", 13);
         animation.from = animation.now;
         animation.to = 1.0;
@@ -598,7 +651,7 @@ function mouseexit (event)
                 
         animation.duration = 500;
         animation.starttime = starttime;
-        animation.firstElement = document.getElementById ('flip');
+        animation.firstElement = $ ('flip');
         animation.timer = setInterval ("animate();", 13);
         animation.from = animation.now;
         animation.to = 0.0;
@@ -644,12 +697,12 @@ function computeNextFloat (from, to, ease)
 
 function enterflip(event)
 {
-    document.getElementById('fliprollie').style.display = 'block';
+    $('fliprollie').style.display = 'block';
 }
 
 function exitflip(event)
 {
-    document.getElementById('fliprollie').style.display = 'none';
+    $('fliprollie').style.display = 'none';
 }
 
 

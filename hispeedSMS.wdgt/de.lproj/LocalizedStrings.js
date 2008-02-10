@@ -1,5 +1,3 @@
-alert("Loaded German localization");
-
 var localizedStrings = {
 	points:            'Punkte',
 	servicepoints:     '(Aktualisieren)',

@@ -1,5 +1,3 @@
-alert("Loaded English localization");
-
 var localizedStrings = {
 	points:            'Points',
 	servicepoints:     '(click to update)',

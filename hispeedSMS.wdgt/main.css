@@ -47,7 +47,7 @@ p {
 }
 
 #front {
-	width: 200px;
+	width: 250px;
 	height: 115px;
     background: url(file:images/frontside_background.png) no-repeat top left;
 	display: block;
@@ -59,7 +59,7 @@ p {
 
 
 #back {
-	width: 200px;
+	width: 250px;
 	height: 115px;
     display: none;
     background: url(file:images/backside_background.png) no-repeat top left;
@@ -68,8 +68,8 @@ p {
 
 .flip {
     position: absolute;
-    bottom: 17px;
-    right: 18px;
+    bottom: 51px;
+    right: 68px;
     width: 13px;
     height: 13px;
 }
@@ -102,4 +102,35 @@ p {
 	display: block;
 	margin: 1px 0 1px 0;
 }
+
+#input_number_list {
+	background-color: #edd;
+	border: 1px solid #a55;
+	width: 170px !important;
+    z-index: 8001;
+}
+
+#input_number_list ul {
+	margin: 0;
+	padding: 3px;
+}
+
+#input_number_list li {
+	list-style-type: none;
+	padding: 2px;
+	margin: 0 0 0 0;
+}
+
+#input_number_list li.selected {
+	background-color: white;
+}
+
+#input_number_list strong {
+	color: #a33;
+	font-weight: normal;
+}
+
+
+
+
 
