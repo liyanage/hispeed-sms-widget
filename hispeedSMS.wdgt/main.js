@@ -16,7 +16,6 @@ var animation = {duration:0, starttime:0, to:1.0, now:0.0, from:0.0, firstElemen
 var last = {message:null, number:null};
 var globalGlueCookie;
 var globalServicePoints;
-var globalSystemCall;
 var globalOsVersion;
 
 
@@ -284,7 +283,7 @@ function do_login(success_handler) {
 
 	/* step 1, establish session */
 	command_line = "/usr/bin/curl -q -s -i --cookie 'TornadoAuth=test' --header 'X-Widget-Request: true' -d url=http://your.hispeed.ch/dummy http://your.hispeed.ch/setcookie.cgi";
-	globalSystemCall = widget.system(command_line, systemHandlerStage1);
+	widget.system(command_line, systemHandlerStage1);
 
 	set_statusmessage(localizedString('loggingin1'));
 	
@@ -295,9 +294,9 @@ function do_login(success_handler) {
 
 
 
-function systemHandlerStage1() {
+function systemHandlerStage1(systemCall) {
 	
-	output = globalSystemCall.outputString;
+	output = systemCall.outputString;
 	matches = output.match(/Set-Cookie: (.+);/m);
 	if (!matches) {
 		set_statusmessage_error("Internal error, no cookie 1");
@@ -346,7 +345,7 @@ function systemHandlerStage1() {
 	var auth_postdata = "url=http://your.hispeed.ch/dummy&mail=" + escape(username) + "&password=" + escape(password);
 	var command_line = "/usr/bin/curl -q -s -i --cookie '" + cookie + "' --header 'X-Widget-Request: true' -d '" + auth_postdata + "' http://your.hispeed.ch/setcookie.cgi";
 
-	globalSystemCall = widget.system(command_line, systemHandlerStage2);
+	widget.system(command_line, systemHandlerStage2);
 
 	set_statusmessage(localizedString('loggingin2'));
 
@@ -356,9 +355,9 @@ function systemHandlerStage1() {
 
 
 
-function systemHandlerStage2() {
+function systemHandlerStage2(systemCall) {
 
-	var output = globalSystemCall.outputString;
+	var output = systemCall.outputString;
 	var matches = output.match(/Set-Cookie: (.+);/m);
 	if (!matches) {
 		set_statusmessage_error("Internal error, no cookie 2");
@@ -368,7 +367,7 @@ function systemHandlerStage2() {
 
 	/* step 3, check authentication and get glue cookie */
 	var command_line = "/usr/bin/curl -q -s -i -L --cookie '" + cookie + "' --header 'X-Widget-Request: true' 'http://your.hispeed.ch/glue.cgi?http://messenger.hispeed.ch/walrus/app/login.do?language=de&hostname=your.hispeed.ch'";
-	globalSystemCall = widget.system(command_line, systemHandlerStage3);
+	widget.system(command_line, systemHandlerStage3);
 	
 	set_statusmessage(localizedString('loggingin3'));
 	
@@ -378,9 +377,9 @@ function systemHandlerStage2() {
 
 
 
-function systemHandlerStage3() {
+function systemHandlerStage3(systemCall) {
 
-	var output = globalSystemCall.outputString;
+	var output = systemCall.outputString;
 	var matches = output.match(/Set-Cookie: (JSESSIONID=.+);/m);
 	if (!matches) {
 		alert("glue.cgi command_line: " + command_line);
@@ -409,14 +408,14 @@ function findWidgetVersion() {
 	var pwd = match[1];
 
 	var command_line = "xsltproc '" + pwd + "/infoplist2version.xslt' '" + pwd + "/Info.plist'";
-	globalSystemCall = widget.system(command_line, systemHandlerVersion);
+	widget.system(command_line, systemHandlerVersion);
 }
 
 
 
-function systemHandlerVersion() {
+function systemHandlerVersion(systemCall) {
 
-	if (globalSystemCall.status || globalSystemCall.errorString) {
+	if (systemCall.status || systemCall.errorString) {
 		alert("xsltproc failed, unable to get version");
 		alert("status: " + result.status);
 		alert("stderr:  " + result.errorString);
@@ -424,41 +423,32 @@ function systemHandlerVersion() {
 		return;
 	}
 
-	var version = globalSystemCall.outputString;
-
+	var version = systemCall.outputString;
 	$('version').appendChild(document.createTextNode(version));
 }
 
 
-
-// updated version for Leopard provided by William Harris
 function showAddressBook() {
 
 	var result = widget.system("/bin/pwd", null);
 	var pwd = result.outputString.match(/^(.+)/)[1];
 	
-	// I use the niutil read instead of ~ or $HOME because those seem
-	// to be broken if a user's home directory is not "/Users/<username>".
-	
-	// Updated for Leopard - use dscl, since niutil no longer exists
-//	set_statusmessage(localizedString('reading_abook'));
 	if (globalOsVersion < 9) {
+		// Use niutil read instead of ~ or $HOME because those seem
+		// to be broken if a user's home directory is not "/Users/<username>".
 		var command_line = "(echo '<root>'; cat $(niutil -readprop . /users/$USER home)/Library/Caches/com.apple.AddressBook/MetaData/*.abcdp | grep -v '<?xml' | grep -v '<!DOCTYPE'; echo '</root>' ) | xsltproc '" + pwd + "/addressbook2html.xslt' - > /tmp/abook.html";
 	} else {
-//		var command_line = "(echo '<root>'; for f in $(/usr/bin/dscl . -read /users/$USER NFSHomeDirectory | cut -f2 -d' ')/Library/Caches/com.apple.AddressBook/MetaData/*.abcdp; do plutil -convert xml1 -o - $f | grep -v '<?xml' | grep -v '<!DOCTYPE'; done; echo '</root>' ) | xsltproc '" + pwd + "/addressbook2html.xslt' -";
-//		var command_line = "(echo '<root>'; for f in $(/usr/bin/dscl . -read /users/$USER NFSHomeDirectory | cut -f2 -d' ')/'Library/Application Support/AddressBook/Metadata'/*.abcdp; do plutil -convert xml1 -o - $f | grep -v '<?xml' | grep -v '<!DOCTYPE'; done; echo '</root>' ) | xsltproc '" + pwd + "/addressbook2html.xslt' -";
 		var command_line = "/bin/sh " + pwd + "/addressbook2html.sh > /tmp/abook.html";
 	}
-//	alert(command_line);
-	globalSystemCall = widget.system(command_line, systemHandlerAddressBook);
 
+	widget.system(command_line, systemHandlerAddressBook);
 }
 
 
 
-function systemHandlerAddressBook() {
+function systemHandlerAddressBook(systemCall) {
 
-	if (globalSystemCall.status || globalSystemCall.errorString) {
+	if (systemCall.status || systemCall.errorString) {
 		alert("xsltproc failed, unable to gather address book entries");
 		alert("status: " + result.status);
 		alert("stderr:  " + result.errorString);

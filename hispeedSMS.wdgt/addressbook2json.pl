@@ -29,3 +29,5 @@ print "\n]\n";
 
 #print "@records";
 #print $data;
+
+#system("env > /tmp/abook.env");
