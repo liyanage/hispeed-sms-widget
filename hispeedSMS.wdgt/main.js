@@ -17,6 +17,7 @@ var last = {message:null, number:null};
 var globalGlueCookie;
 var globalServicePoints;
 var globalOsVersion;
+var globalUserName;
 
 
 
@@ -43,13 +44,13 @@ Autocompleter.AddressBook = Class.create(Autocompleter.Local, {
 	var result = widget.system("/bin/pwd", null);
 	var match = result.outputString.match(/^(.+)/);
 	var pwd = match[1];
-	var cmd = "/usr/bin/perl " + pwd + "/addressbook2json.pl > /tmp/abook.js";
+	var cmd = "umask 077; /usr/bin/perl " + pwd + "/addressbook2json.pl > /tmp/abook_$USER.js";
 	widget.system(cmd, this.updateAddressBookDataSystemCallback.bind(this));
 
   },
 
   updateAddressBookDataSystemCallback: function (systemCall) {
-	new Ajax.Request('file:///tmp/abook.js', {
+	new Ajax.Request('file:///tmp/abook_' + globalUserName + '.js', {
 		onComplete: this.updateAddressBookDataXhrCallback.bind(this)
 	});
   },
@@ -90,6 +91,7 @@ function setup() {
 	localizeStrings();
 	findWidgetVersion();
 	setupOsVersion();
+	setupUserName();
 	setupAutoCompletion();
 
 }
@@ -99,6 +101,10 @@ function setupOsVersion() {
 	globalOsVersion = result.outputString.match(/^(.+)/)[1];
 }
 
+function setupUserName() {
+	var result = widget.system("echo $USER", null);
+	globalUserName = result.outputString.match(/^(.+)/)[1];
+}
 
 function setupAutoCompletion() {
 	if (globalOsVersion < 9) return;
@@ -436,9 +442,9 @@ function showAddressBook() {
 	if (globalOsVersion < 9) {
 		// Use niutil read instead of ~ or $HOME because those seem
 		// to be broken if a user's home directory is not "/Users/<username>".
-		var command_line = "(echo '<root>'; cat $(niutil -readprop . /users/$USER home)/Library/Caches/com.apple.AddressBook/MetaData/*.abcdp | grep -v '<?xml' | grep -v '<!DOCTYPE'; echo '</root>' ) | xsltproc '" + pwd + "/addressbook2html.xslt' - > /tmp/abook.html";
+		var command_line = "umask 077; (echo '<root>'; cat $(niutil -readprop . /users/$USER home)/Library/Caches/com.apple.AddressBook/MetaData/*.abcdp | grep -v '<?xml' | grep -v '<!DOCTYPE'; echo '</root>' ) | xsltproc '" + pwd + "/addressbook2html.xslt' - > /tmp/abook_$USER.html";
 	} else {
-		var command_line = "/bin/sh " + pwd + "/addressbook2html.sh > /tmp/abook.html";
+		var command_line = "umask 077; /bin/sh " + pwd + "/addressbook2html.sh > /tmp/abook_$USER.html";
 	}
 
 	widget.system(command_line, systemHandlerAddressBook);
@@ -457,7 +463,7 @@ function systemHandlerAddressBook(systemCall) {
 		return;
 	}
 
-	new Ajax.Request('file:///tmp/abook.html', {
+	new Ajax.Request('file:///tmp/abook_' + globalUserName + '.html', {
 		onComplete: addressbook2HtmlFileReadCallback
 	});
 }
