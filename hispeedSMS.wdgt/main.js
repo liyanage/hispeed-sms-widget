@@ -18,6 +18,7 @@ var globalGlueCookie;
 var globalServicePoints;
 var globalOsVersion;
 var globalUserName;
+var globalProxyString;
 
 
 
@@ -93,7 +94,7 @@ function setup() {
 	setupOsVersion();
 	setupUserName();
 	setupAutoCompletion();
-
+    
 }
 
 function setupOsVersion() {
@@ -111,6 +112,29 @@ function setupAutoCompletion() {
 	new Autocompleter.AddressBook('input_number', 'input_number_list', {choices: 6, fullSearch: true, afterUpdateElement: autocompleterUpdate});
 }
 
+function setupProxy(result) {
+    // First find if there is a proxy configured
+    var result = widget.system("/usr/sbin/scutil --proxy", null);
+    var useHttpProxy = result.outputString.match(/HTTPEnable : 1/);
+    if (useHttpProxy) {
+        var proxyHost = result.outputString.match(/HTTPProxy : (.+)\n/)[1];
+        var proxyPort = result.outputString.match(/HTTPPort : (\d+)\n/)[1];
+        globalProxyString = " --proxy " + proxyHost + ":" + proxyPort;
+        
+        // Now look if there is a password for the proxy configuration
+        var secResult = widget.system("/usr/bin/security -q find-internet-password -g -s " + proxyHost,null);
+        // status will be non-zero if the host is not found or the user deny access to the keychain
+        if (secResult.status == 0) {
+            var proxyUser = secResult.outputString.match(/"acct"<blob>="(.+)"/)[1];
+            // for some reason, the password info is sent to stderr
+            var proxyPass = secResult.errorString.match(/^password: "(.+)"/)[1];
+            globalProxyString += " --proxy-user " + proxyUser + ":" + proxyPass;
+        }
+        alert("Proxy String: '" + globalProxyString + "'");
+    } else {
+        globalProxyString = "";
+    }
+}
 
 function autocompleterUpdate() {
 	var value = $('input_number').value;
@@ -185,6 +209,7 @@ function send_sms() {
 	
 	widget.setPreferenceForKey(number, "number");
 
+    setupProxy();
 	do_login(do_send_sms);
 
 
@@ -219,11 +244,12 @@ function do_send_sms() {
 	var url = "http://messenger.hispeed.ch/walrus/app/sms_send.do;jsessionid=" + sessionId;
 //	alert("*** url: " + url);
 
-	var escapedMessage = encodeURIComponent(last.message).replace(/'/, '%27');
+	var escapedMessage = encodeURIComponent(last.message).replace(/'/g, '%27');
 
 	var body = "hostname=your.hispeed.ch&action=send&groupName=%3A%3A__DEFAULTGROUP__%3A%3A&message=" + escapedMessage + "&numCount=&sendDate=&sendTime=&notifAddress=notifNone&originator=originatorUser&recipientChecked=yes&recipient=" + last.number;
 //	alert("*** body: " + body);
-	var cmd = "/usr/bin/curl -q -s -i --cookie '" + globalGlueCookie + "' --header 'X-Widget-Request: true' --data-binary '" + body + "' '" + url + "'";
+	var cmd = "/usr/bin/curl -q -s -i --cookie '" + globalGlueCookie + "' --header 'X-Widget-Request: true' --data-binary '" + body + "'" +
+        globalProxyString + " '" + url + "'";
 //	alert("*** cmd: " + cmd);
 
 	widget.system(cmd, do_send_sms_system_handler);
@@ -288,7 +314,8 @@ function do_login(success_handler) {
 	var command_line;
 
 	/* step 1, establish session */
-	command_line = "/usr/bin/curl -q -s -i --cookie 'TornadoAuth=test' --header 'X-Widget-Request: true' -d url=http://your.hispeed.ch/dummy http://your.hispeed.ch/setcookie.cgi";
+	command_line = "/usr/bin/curl -q -s -i --cookie 'TornadoAuth=test' --header 'X-Widget-Request: true' " + globalProxyString +
+        " -d url=http://your.hispeed.ch/dummy http://your.hispeed.ch/setcookie.cgi";
 	widget.system(command_line, systemHandlerStage1);
 
 	set_statusmessage(localizedString('loggingin1'));
@@ -302,6 +329,13 @@ function do_login(success_handler) {
 
 function systemHandlerStage1(systemCall) {
 	
+    if (systemCall.status) {
+        last.message = "";
+        last.number = "";
+        set_statusmessage_error(localizedString('networkfailed'));
+        return null;
+    }
+    
 	output = systemCall.outputString;
 	matches = output.match(/Set-Cookie: (.+);/m);
 	if (!matches) {
@@ -349,7 +383,8 @@ function systemHandlerStage1(systemCall) {
 
 	// fixme: need to escape single quotes in auth_postdata before passing to shell
 	var auth_postdata = "url=http://your.hispeed.ch/dummy&mail=" + escape(username) + "&password=" + escape(password);
-	var command_line = "/usr/bin/curl -q -s -i --cookie '" + cookie + "' --header 'X-Widget-Request: true' -d '" + auth_postdata + "' http://your.hispeed.ch/setcookie.cgi";
+	var command_line = "/usr/bin/curl -q -s -i --cookie '" + cookie + "' --header 'X-Widget-Request: true' -d '" + auth_postdata + "'" +
+        globalProxyString + " http://your.hispeed.ch/setcookie.cgi";
 
 	widget.system(command_line, systemHandlerStage2);
 
@@ -372,7 +407,8 @@ function systemHandlerStage2(systemCall) {
 	cookie = matches[1];
 
 	/* step 3, check authentication and get glue cookie */
-	var command_line = "/usr/bin/curl -q -s -i -L --cookie '" + cookie + "' --header 'X-Widget-Request: true' 'http://your.hispeed.ch/glue.cgi?http://messenger.hispeed.ch/walrus/app/login.do?language=de&hostname=your.hispeed.ch'";
+	var command_line = "/usr/bin/curl -q -s -i -L --cookie '" + cookie + "' --header 'X-Widget-Request: true'" + globalProxyString +
+        " 'http://your.hispeed.ch/glue.cgi?http://messenger.hispeed.ch/walrus/app/login.do?language=de&hostname=your.hispeed.ch'";
 	widget.system(command_line, systemHandlerStage3);
 	
 	set_statusmessage(localizedString('loggingin3'));
@@ -423,9 +459,9 @@ function systemHandlerVersion(systemCall) {
 
 	if (systemCall.status || systemCall.errorString) {
 		alert("xsltproc failed, unable to get version");
-		alert("status: " + result.status);
-		alert("stderr:  " + result.errorString);
-		alert("stdout:  " + result.outputString);
+		alert("status: " + systemCall.status);
+		alert("stderr:  " + systemCall.errorString);
+		alert("stdout:  " + systemCall.outputString);
 		return;
 	}
 
@@ -531,6 +567,7 @@ function inputNumberOut() {
 
 
 function update_servicepoints_status() {
+    setupProxy();
 	do_login();
 }
 

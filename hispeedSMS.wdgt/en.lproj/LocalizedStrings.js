@@ -30,7 +30,8 @@ var localizedStrings = {
 	toolong:           "Message too long!",
 	abook:             'Address Book...',
 	charsleft:         'characters left',
-	reading_abook:     'Reading Address Book...'
+	reading_abook:     'Reading Address Book...',
+    networkfailed:     'Network access failed'
 };
 
 // Local Variables:
