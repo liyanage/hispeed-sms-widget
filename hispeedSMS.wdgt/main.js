@@ -45,7 +45,9 @@ Autocompleter.AddressBook = Class.create(Autocompleter.Local, {
 	var result = widget.system("/bin/pwd", null);
 	var match = result.outputString.match(/^(.+)/);
 	var pwd = match[1];
-	var cmd = "umask 077; /usr/bin/perl " + pwd + "/addressbook2json.pl > /tmp/abook_$USER.js";
+    var outfile = "/tmp/abook_" + globalUserName + ".js";
+    var errfile = "/tmp/abook_" + globalUserName + ".info"
+	var cmd = "umask 077; /usr/bin/perl " + pwd + "/addressbook2json.pl > " + outfile + " 2> " + errfile;
 	widget.system(cmd, this.updateAddressBookDataSystemCallback.bind(this));
 
   },
@@ -103,7 +105,7 @@ function setupOsVersion() {
 }
 
 function setupUserName() {
-	var result = widget.system("echo $USER", null);
+	var result = widget.system("/usr/bin/whoami", null);
 	globalUserName = result.outputString.match(/^(.+)/)[1];
 }
 
